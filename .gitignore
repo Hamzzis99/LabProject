@@ -1,0 +1,60 @@
+Plugins/Developer/
+
+# Visual Studio
+.codex/
+.vs/
+.claude/
+Content/UltraDynamicSky/
+Reedme/
+Claude.md
+Codexreedme/
+
+# Content Folder (Maps/Materials/Texture/VFX는 핵심 에셋이므로 추적 필수)
+
+Content/Collections/
+Content/Developers/
+Plugins/Developer/
+Content/Assets/
+Plugins/Inventory/Content/InventoryAssets/
+Plugins/UnrealMCP
+# Unreal Engine build artifacts
+Build/
+Builds/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vscode/
+.idea/
+FileOpenOrder/
+Binaries/*
+Plugins/*/Binaries/*
+Plugins/*/Intermediate/
+Plugins/UnrealMCP
+Plugins/UnrealMCP_backup
+
+# User-specific files
+*.sln
+*.suo
+*.user
+*.userprefs
+*.opensdf
+*.sdf
+*.ipch
+*.log
+*.tlog
+
+# Build results
+*.obj
+*.pch
+*.pdb
+*.exe
+*.app
+*.dylib
+*.so
+nul
+
+# DLL/LIB - Binaries 폴더의 빌드 결과물만 무시 (ThirdParty SDK는 허용)
+Binaries/**/*.dll
+Binaries/**/*.lib
+Plugins/*/Binaries/**/*.dll
+Plugins/*/Binaries/**/*.lib
