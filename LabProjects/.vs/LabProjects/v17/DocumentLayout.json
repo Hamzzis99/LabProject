@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Github\\LabProject\\LabProject\\LabProjects\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{AFA12881-2716-4FE4-BB65-016DA503EFB5}|LabProject02\\LabProject02.vcxproj|C:\\Github\\LabProject\\LabProject\\LabProjects\\LabProject02\\stdafx.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{AFA12881-2716-4FE4-BB65-016DA503EFB5}|LabProject02\\LabProject02.vcxproj|solutionrelative:LabProject02\\stdafx.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{AFA12881-2716-4FE4-BB65-016DA503EFB5}|LabProject02\\LabProject02.vcxproj|C:\\Github\\LabProject\\LabProject\\LabProjects\\LabProject02\\LabProject02.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{AFA12881-2716-4FE4-BB65-016DA503EFB5}|LabProject02\\LabProject02.vcxproj|solutionrelative:LabProject02\\LabProject02.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
@@ -31,19 +35,32 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "stdafx.cpp",
+              "DocumentMoniker": "C:\\Github\\LabProject\\LabProject\\LabProjects\\LabProject02\\stdafx.cpp",
+              "RelativeDocumentMoniker": "LabProject02\\stdafx.cpp",
+              "ToolTip": "C:\\Github\\LabProject\\LabProject\\LabProjects\\LabProject02\\stdafx.cpp",
+              "RelativeToolTip": "LabProject02\\stdafx.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAuwAAAAAATAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2026-04-06T17:52:34.259Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "LabProject02.cpp",
               "DocumentMoniker": "C:\\Github\\LabProject\\LabProject\\LabProjects\\LabProject02\\LabProject02.cpp",
               "RelativeDocumentMoniker": "LabProject02\\LabProject02.cpp",
               "ToolTip": "C:\\Github\\LabProject\\LabProject\\LabProjects\\LabProject02\\LabProject02.cpp",
               "RelativeToolTip": "LabProject02\\LabProject02.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwMAAAAQAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2026-04-06T17:48:19.983Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "LabProject01.cpp",
               "DocumentMoniker": "C:\\Github\\LabProject\\LabProject\\LabProjects\\LabProject01\\LabProject01.cpp",
               "RelativeDocumentMoniker": "LabProject01\\LabProject01.cpp",
@@ -51,12 +68,11 @@
               "RelativeToolTip": "LabProject01\\LabProject01.cpp",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAE8AAAAoAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-04-06T17:44:27.121Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-04-06T17:44:27.121Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "stdafx.cpp",
               "DocumentMoniker": "C:\\Github\\LabProject\\LabProject\\LabProjects\\LabProject00\\stdafx.cpp",
               "RelativeDocumentMoniker": "LabProject00\\stdafx.cpp",
@@ -64,12 +80,11 @@
               "RelativeToolTip": "LabProject00\\stdafx.cpp",
               "ViewState": "AgIAAAAAAAAAAAAAAAAuwAAAAAATAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2026-04-06T16:49:02.865Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-04-06T16:49:02.865Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "LabProject00.cpp",
               "DocumentMoniker": "C:\\Github\\LabProject\\LabProject\\LabProjects\\LabProject00\\LabProject00.cpp",
               "RelativeDocumentMoniker": "LabProject00\\LabProject00.cpp",
