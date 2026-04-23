@@ -198,6 +198,111 @@ void CGameFramework::RenderHitMarks(HDC hDCFrameBuffer)
     }
 }
 
+void CGameFramework::UpdateClearSequence(float fElapsedTime)
+{
+    switch (m_gameState)
+    {
+    case GameState::Playing:
+    {
+        // Trigger when the last cube has fully finished its Exploding -> Dead
+        // transition (m_bActive becomes false only at that point, which is
+        // what RemainingEnemyCount counts against).
+        if (m_pScene->RemainingEnemyCount() == 0)
+        {
+            m_gameState   = GameState::ClearWalking;
+            m_fClearTimer = 0.0f;
+
+            // Snapshot current camera pose.
+            m_xmf3ClearStartPos    = m_pPlayer->m_pCamera->m_xmf3Position;
+            m_xmf3ClearStartLookAt = XMFLOAT3(0.0f, 0.0f, 0.0f); // camera was aimed at origin
+
+            // Walk direction = unit vector from camera to its look-at point.
+            XMVECTOR vDir = XMVectorSubtract(XMLoadFloat3(&m_xmf3ClearStartLookAt),
+                                             XMLoadFloat3(&m_xmf3ClearStartPos));
+            vDir = XMVector3Normalize(vDir);
+            XMStoreFloat3(&m_xmf3ClearWalkDir, vDir);
+        }
+        break;
+    }
+
+    case GameState::ClearWalking:
+    {
+        m_fClearTimer += fElapsedTime;
+        if (m_fClearTimer >= CLEAR_WALK_DURATION)
+        {
+            // Transition to ClearTurning. Freeze current pose and compute
+            // the yaw-rotated look-at target the turn will lerp toward.
+            m_gameState   = GameState::ClearTurning;
+            m_fClearTimer = 0.0f;
+
+            m_xmf3ClearStartPos    = m_pPlayer->m_pCamera->m_xmf3Position;
+            m_xmf3ClearStartLookAt = XMFLOAT3(0.0f, 0.0f, 0.0f); // still aimed at origin here
+
+            XMVECTOR vPos    = XMLoadFloat3(&m_xmf3ClearStartPos);
+            XMVECTOR vLook   = XMLoadFloat3(&m_xmf3ClearStartLookAt);
+            XMVECTOR vDir    = XMVector3Normalize(XMVectorSubtract(vLook, vPos));
+            XMMATRIX mYaw    = XMMatrixRotationY(XMConvertToRadians(CLEAR_TURN_YAW_DEG));
+            XMVECTOR vNewDir = XMVector3Normalize(XMVector3TransformNormal(vDir, mYaw));
+            // Pick any point along the new direction; only the direction matters
+            // for the view matrix, distance just makes the number numerically nice.
+            XMVECTOR vTarget = XMVectorAdd(vPos, XMVectorScale(vNewDir, 20.0f));
+            XMStoreFloat3(&m_xmf3ClearTurnLookAt, vTarget);
+        }
+        else
+        {
+            float t = m_fClearTimer / CLEAR_WALK_DURATION;  // 0..1
+
+            // Linear forward walk from the snapshot.
+            XMFLOAT3 pos = m_xmf3ClearStartPos;
+            pos.x += m_xmf3ClearWalkDir.x * CLEAR_WALK_DISTANCE * t;
+            pos.y += m_xmf3ClearWalkDir.y * CLEAR_WALK_DISTANCE * t;
+            pos.z += m_xmf3ClearWalkDir.z * CLEAR_WALK_DISTANCE * t;
+
+            // Footstep bob: small vertical sine on top of the walk.
+            pos.y += ::sinf(m_fClearTimer * CLEAR_WALK_BOB_FREQ) * CLEAR_WALK_BOB_AMP;
+
+            XMFLOAT3 up(0.0f, 1.0f, 0.0f);
+            m_pPlayer->m_pCamera->SetLookAt(pos, m_xmf3ClearStartLookAt, up);
+            m_pPlayer->m_pCamera->GenerateViewMatrix();
+        }
+        break;
+    }
+
+    case GameState::ClearTurning:
+    {
+        m_fClearTimer += fElapsedTime;
+        if (m_fClearTimer >= CLEAR_TURN_DURATION)
+        {
+            m_gameState = GameState::Done;
+
+            XMFLOAT3 up(0.0f, 1.0f, 0.0f);
+            m_pPlayer->m_pCamera->SetLookAt(m_xmf3ClearStartPos, m_xmf3ClearTurnLookAt, up);
+            m_pPlayer->m_pCamera->GenerateViewMatrix();
+        }
+        else
+        {
+            float t = m_fClearTimer / CLEAR_TURN_DURATION;
+            float s = t * t * (3.0f - 2.0f * t);  // smoothstep for ease-in-out
+
+            // Lerp the look-at point from its starting value toward the target.
+            XMFLOAT3 la;
+            la.x = m_xmf3ClearStartLookAt.x + (m_xmf3ClearTurnLookAt.x - m_xmf3ClearStartLookAt.x) * s;
+            la.y = m_xmf3ClearStartLookAt.y + (m_xmf3ClearTurnLookAt.y - m_xmf3ClearStartLookAt.y) * s;
+            la.z = m_xmf3ClearStartLookAt.z + (m_xmf3ClearTurnLookAt.z - m_xmf3ClearStartLookAt.z) * s;
+
+            XMFLOAT3 up(0.0f, 1.0f, 0.0f);
+            m_pPlayer->m_pCamera->SetLookAt(m_xmf3ClearStartPos, la, up);
+            m_pPlayer->m_pCamera->GenerateViewMatrix();
+        }
+        break;
+    }
+
+    case GameState::Done:
+        // Nothing to do; camera stays put at the final pose.
+        break;
+    }
+}
+
 void CGameFramework::FrameAdvance()
 {
     if (!m_bActive) return;
@@ -207,6 +312,7 @@ void CGameFramework::FrameAdvance()
 
     // --- simulation ---
     m_pScene->Animate(fElapsed);
+    UpdateClearSequence(fElapsed);
 
     // Tick hit-mark lifetimes and remove expired entries.
     for (auto it = m_HitMarks.begin(); it != m_HitMarks.end(); )
@@ -222,20 +328,25 @@ void CGameFramework::FrameAdvance()
     RenderHitMarks(m_hDCFrameBuffer);
     PresentFrameBuffer();
 
-    // Title bar: FPS plus remaining enemy count or "Cleared".
+    // Title bar: FPS plus current state.
     _TCHAR szTitle[96];
-    const int remaining = m_pScene->RemainingEnemyCount();
-    if (remaining > 0)
+    _TCHAR szFps[32] = _T("");
+    m_GameTimer.GetFrameRate(szFps, 32);
+    switch (m_gameState)
     {
-        _TCHAR szFps[32] = _T("");
-        m_GameTimer.GetFrameRate(szFps, 32);
-        _stprintf_s(szTitle, _T("VirtuaCop - Enemies left: %d  [%s"), remaining, szFps);
-    }
-    else
-    {
-        _TCHAR szFps[32] = _T("");
-        m_GameTimer.GetFrameRate(szFps, 32);
+    case GameState::Playing:
+        _stprintf_s(szTitle, _T("VirtuaCop - Enemies left: %d  [%s"),
+                    m_pScene->RemainingEnemyCount(), szFps);
+        break;
+    case GameState::ClearWalking:
+        _stprintf_s(szTitle, _T("VirtuaCop - Cleared! (walking)  [%s"), szFps);
+        break;
+    case GameState::ClearTurning:
+        _stprintf_s(szTitle, _T("VirtuaCop - Cleared! (turning)  [%s"), szFps);
+        break;
+    case GameState::Done:
         _stprintf_s(szTitle, _T("VirtuaCop - Cleared!  [%s"), szFps);
+        break;
     }
     ::SetWindowText(m_hWnd, szTitle);
 }

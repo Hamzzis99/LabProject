@@ -19,8 +19,12 @@ public:
     CPlayer*                        m_pPlayer = NULL;
 
     CSceneNode*                     m_pRootNode = NULL;
-    std::vector<CGameObject*>       m_AllObjects;   // owning pointers
+    std::vector<CGameObject*>       m_AllObjects;   // owning: enemies only
     std::vector<CSceneNode*>        m_EnemyNodes;   // non-owning, points into tree
+
+    // Boundary walls: visual only, not pickable, not counted as enemies.
+    // Stored in a separate owning list so they can be deleted on shutdown.
+    std::vector<CGameObject*>       m_WallObjects;
 
     virtual void BuildObjects();
     virtual void ReleaseObjects();

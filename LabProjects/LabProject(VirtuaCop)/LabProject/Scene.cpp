@@ -11,6 +11,10 @@ CScene::~CScene()
 
 void CScene::BuildObjects()
 {
+    // One-time: populate the 240 random sphere vectors and create the
+    // shared 0.5-cube mesh used for all debris pieces.
+    CGameObject::PrepareExplosion();
+
     // Shared cube mesh; every enemy is the same colour-swapped cube.
     CCubeMesh* pCubeMesh = new CCubeMesh(4.0f, 4.0f, 4.0f);
 
@@ -69,6 +73,9 @@ void CScene::ReleaseObjects()
     // Then delete the flat list of game objects.
     for (CGameObject* pObj : m_AllObjects) delete pObj;
     m_AllObjects.clear();
+
+    // Release the shared debris mesh (safe even if nothing ever exploded).
+    CGameObject::ReleaseExplosion();
 }
 
 CGameObject* CScene::PickObjectPointedByCursor(int xClient, int yClient, CCamera* pCamera)
@@ -87,7 +94,7 @@ CGameObject* CScene::PickObjectPointedByCursor(int xClient, int yClient, CCamera
 
     for (CGameObject* pObj : m_AllObjects)
     {
-        if (!pObj->m_bActive) continue;
+        if (!pObj->IsPickable()) continue;
         float fHitDistance = FLT_MAX;
         int nIntersected = pObj->PickObjectByRayIntersection(xmvPickPosition, xmmtxView, &fHitDistance);
         if ((nIntersected > 0) && (fHitDistance < fNearest))
@@ -108,12 +115,12 @@ int CScene::RemainingEnemyCount() const
 
 void CScene::Animate(float fElapsedTime)
 {
-    // Per-node animation (ticks each enemy's hit-flash timer).
+    // Per-node animation (ticks each enemy's hit state machine + spin matrix).
+    // NOTE: we intentionally do NOT call UpdateWorldTransform() here. The
+    // scene is static and the root's local transforms never change after
+    // BuildObjects. Calling it every frame would overwrite the per-object
+    // spin matrix written by Animate, which would visually freeze the spin.
     if (m_pRootNode) m_pRootNode->Animate(fElapsedTime);
-
-    // Nothing below needs recomputing since nothing is moving,
-    // but doing it once per frame keeps picking safe if we later add motion.
-    if (m_pRootNode) m_pRootNode->UpdateWorldTransform();
 }
 
 void CScene::Render(HDC hDCFrameBuffer, CCamera* pCamera)
