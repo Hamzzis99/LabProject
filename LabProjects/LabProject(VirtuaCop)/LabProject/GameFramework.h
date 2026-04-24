@@ -15,14 +15,27 @@ struct HitMark
     bool  bDidHit;      // true = a cube was hit (cross), false = miss (ring)
 };
 
-// Top-level game state. After every enemy is Dead we play a short "clear"
-// camera move: walk forward, then turn. Classic light-gun shooter cadence.
+// Top-level game state. The stage is split into two waves separated by a
+// short "clear" cutscene that walks the camera forward and turns it 90 deg
+// right into the east corridor.
+//
+//   WaveOne       : first wave active in the vertical corridor. Clicking
+//                   shoots at enemies 0..4. When all five are dead -> ClearWalking.
+//   ClearWalking  : camera translates forward along its look direction
+//                   with a small vertical footstep bob.
+//   ClearTurning  : camera stops translating; yaws its look-at point 90 deg
+//                   right using a smoothstep curve.
+//   WaveTwo       : second wave active in the east corridor, now visible.
+//                   Clicking shoots at enemies 5..9. When all five are dead
+//                   -> Done.
+//   Done          : both waves clear; nothing left to shoot.
 enum class GameState : int
 {
-    Playing,       // normal play
-    ClearWalking,  // cam translates forward with a small vertical bob
-    ClearTurning,  // cam stops; yaws its look-at direction around Y
-    Done           // frozen at final pose
+    WaveOne,
+    ClearWalking,
+    ClearTurning,
+    WaveTwo,
+    Done
 };
 
 class CGameFramework
@@ -57,7 +70,7 @@ private:
     static constexpr float      HIT_MARK_DURATION = 0.20f;
 
     // ---- Stage-clear camera sequence ----------------------------------
-    GameState                   m_gameState    = GameState::Playing;
+    GameState                   m_gameState    = GameState::WaveOne;
     float                       m_fClearTimer  = 0.0f;
 
     // Captured at the moment each phase begins.
@@ -72,7 +85,7 @@ private:
     static constexpr float      CLEAR_WALK_BOB_AMP  = 0.35f;  // vertical bob amplitude
     static constexpr float      CLEAR_WALK_BOB_FREQ = 7.0f;   // rad/s (footstep rate)
     static constexpr float      CLEAR_TURN_DURATION = 1.5f;   // seconds turning
-    static constexpr float      CLEAR_TURN_YAW_DEG  = 70.0f;  // right-turn angle
+    static constexpr float      CLEAR_TURN_YAW_DEG  = 90.0f;  // right-turn angle (matches L-corridor corner)
 
 public:
     void BuildFrameBuffer();

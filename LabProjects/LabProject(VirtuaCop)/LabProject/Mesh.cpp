@@ -59,14 +59,20 @@ void CMesh::SetPolygon(int nIndex, CPolygon* pPolygon)
 // For each face:
 //   1. Compute world-space normal from the first three vertices.
 //   2. Backface-cull using dot(normal, face-to-camera).
-//   3. Transform vertices to clip space via World * View * Projection.
-//   4. Perform NDC range check (reject polys fully outside the frustum).
-//   5. Screen-transform to POINT array and call ::Polygon().
+//   3. Transform vertices to view space (for correct near-plane clipping).
+//   4. Sutherland-Hodgman clip against the near plane (view_z >= zNear).
+//      This is essential whenever the camera is inside the z-extent of a
+//      mesh (e.g. walking through a corridor). Without it, vertices behind
+//      the camera project with negative w and the polygon tears.
+//   5. Project clipped vertices to NDC via the projection matrix.
+//   6. Screen-transform to POINT array and call ::Polygon().
 // Convex meshes (cubes) stay correct after backface culling alone.
 void CMesh::Render(HDC hDCFrameBuffer, XMFLOAT4X4& xmf4x4World, CCamera* pCamera)
 {
     XMMATRIX mtxWorld = XMLoadFloat4x4(&xmf4x4World);
-    XMFLOAT4X4 xmf4x4Transform = Matrix4x4::Multiply(xmf4x4World, pCamera->m_xmf4x4ViewProject);
+    XMFLOAT4X4 xmf4x4WorldView = Matrix4x4::Multiply(xmf4x4World, pCamera->m_xmf4x4View);
+    XMMATRIX mtxWorldView = XMLoadFloat4x4(&xmf4x4WorldView);
+    XMMATRIX mtxProj = XMLoadFloat4x4(&pCamera->m_xmf4x4Projection);
 
     XMVECTOR xmvCameraPos = XMLoadFloat3(&pCamera->m_xmf3Position);
 
@@ -74,6 +80,7 @@ void CMesh::Render(HDC hDCFrameBuffer, XMFLOAT4X4& xmf4x4World, CCamera* pCamera
     const float halfH = pCamera->m_d3dViewport.Height * 0.5f;
     const float offX  = pCamera->m_d3dViewport.TopLeftX + halfW;
     const float offY  = pCamera->m_d3dViewport.TopLeftY + halfH;
+    const float zNear = 1.01f;   // matches CPlayer::CPlayer() near plane
 
     for (int j = 0; j < m_nPolygons; j++)
     {
@@ -94,21 +101,66 @@ void CMesh::Render(HDC hDCFrameBuffer, XMFLOAT4X4& xmf4x4World, CCamera* pCamera
         XMStoreFloat(&fDot, XMVector3Dot(normal, toFace));
         if (fDot > 0.0f) continue; // face pointing away from camera
 
-        // --- Transform + simple frustum check + screen-space POINTs ---
-        POINT pts[16];
+        // --- Transform vertices to view space ---
         if (nVertices > 16) nVertices = 16;
-        bool bAnyVisible = false;
+        XMFLOAT3 viewVerts[16];
         for (int i = 0; i < nVertices; i++)
         {
-            XMFLOAT3 ndc = Vector3::TransformCoord(pPoly->m_pVertices[i].m_xmf3Position, xmf4x4Transform);
-            if ((ndc.z >= 0.0f) && (ndc.z <= 1.0f)) bAnyVisible = true;
-
-            pts[i].x = (LONG)(+ndc.x * halfW + offX);
-            pts[i].y = (LONG)(-ndc.y * halfH + offY);
+            XMVECTOR v = XMLoadFloat3(&pPoly->m_pVertices[i].m_xmf3Position);
+            XMVECTOR vView = XMVector3TransformCoord(v, mtxWorldView);
+            XMStoreFloat3(&viewVerts[i], vView);
         }
-        if (!bAnyVisible) continue;
 
-        ::Polygon(hDCFrameBuffer, pts, nVertices);
+        // --- Sutherland-Hodgman clip against the near plane (view_z >= zNear) ---
+        // A convex polygon with n vertices produces at most n+1 vertices after
+        // clipping against one plane. clipped[16] is safe since inputs are <=16.
+        XMFLOAT3 clipped[16];
+        int nClipped = 0;
+        for (int i = 0; i < nVertices; i++)
+        {
+            const int prev_i = (i == 0) ? (nVertices - 1) : (i - 1);
+            const XMFLOAT3& prev = viewVerts[prev_i];
+            const XMFLOAT3& curr = viewVerts[i];
+            const bool prev_in = prev.z >= zNear;
+            const bool curr_in = curr.z >= zNear;
+            if (curr_in)
+            {
+                if (!prev_in && nClipped < 16)
+                {
+                    const float t = (zNear - prev.z) / (curr.z - prev.z);
+                    clipped[nClipped].x = prev.x + t * (curr.x - prev.x);
+                    clipped[nClipped].y = prev.y + t * (curr.y - prev.y);
+                    clipped[nClipped].z = zNear;
+                    ++nClipped;
+                }
+                if (nClipped < 16) clipped[nClipped++] = curr;
+            }
+            else if (prev_in && nClipped < 16)
+            {
+                const float t = (zNear - prev.z) / (curr.z - prev.z);
+                clipped[nClipped].x = prev.x + t * (curr.x - prev.x);
+                clipped[nClipped].y = prev.y + t * (curr.y - prev.y);
+                clipped[nClipped].z = zNear;
+                ++nClipped;
+            }
+        }
+        if (nClipped < 3) continue;
+
+        // --- Project clipped verts to screen space ---
+        POINT pts[16];
+        for (int i = 0; i < nClipped; i++)
+        {
+            XMVECTOR v = XMVectorSet(clipped[i].x, clipped[i].y, clipped[i].z, 1.0f);
+            XMVECTOR vClip = XMVector4Transform(v, mtxProj);
+            float w = XMVectorGetW(vClip);
+            if (w < 1e-6f) w = 1e-6f;  // clip verts guarantee w > 0, this is just safety
+            const float ndc_x = XMVectorGetX(vClip) / w;
+            const float ndc_y = XMVectorGetY(vClip) / w;
+            pts[i].x = (LONG)(+ndc_x * halfW + offX);
+            pts[i].y = (LONG)(-ndc_y * halfH + offY);
+        }
+
+        ::Polygon(hDCFrameBuffer, pts, nClipped);
     }
 }
 

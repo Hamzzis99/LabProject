@@ -38,4 +38,11 @@ public:
 
     // Number of still-active enemies (for the title-bar "Cleared" notice).
     int RemainingEnemyCount() const;
+
+    // Per-wave remaining counts. Wave 1 = first 5 entries of m_AllObjects
+    // (vertical corridor), Wave 2 = next 5 entries (east corridor). Used by
+    // the game state machine to decide when to trigger the walk+turn (wave
+    // 1 cleared) and when the whole stage is done (both waves cleared).
+    static constexpr int WAVE_SIZE = 5;
+    int WaveRemaining(int nWave) const;
 };

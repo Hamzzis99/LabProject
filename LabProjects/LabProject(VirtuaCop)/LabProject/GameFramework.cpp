@@ -141,12 +141,15 @@ LRESULT CALLBACK CGameFramework::OnProcessingWindowMessage(HWND hWnd, UINT nMess
 
 void CGameFramework::BuildObjects()
 {
-    // Fixed camera: back a bit and slightly elevated, looking at the origin.
+    // Fixed camera: inside the south end of the vertical corridor, slightly
+    // elevated, looking along +z toward the origin. Starts at z=-35 so the
+    // 18-unit walk ends around z=-17, which is inside the east-corridor
+    // opening's z range [-22, -8] -- the turn then reveals wave 2.
     m_pPlayer = new CPlayer();
     m_pPlayer->Setup(
-        /*position*/ XMFLOAT3(0.0f, 6.0f, -40.0f),
-        /*lookAt  */ XMFLOAT3(0.0f, 0.0f,  0.0f),
-        /*up      */ XMFLOAT3(0.0f, 1.0f,  0.0f));
+        /*position*/ XMFLOAT3(0.0f, 6.0f, -35.0f),
+        /*lookAt  */ XMFLOAT3(0.0f, 0.0f,   0.0f),
+        /*up      */ XMFLOAT3(0.0f, 1.0f,   0.0f));
 
     m_pScene = new CScene();
     m_pScene->BuildObjects();
@@ -202,12 +205,14 @@ void CGameFramework::UpdateClearSequence(float fElapsedTime)
 {
     switch (m_gameState)
     {
-    case GameState::Playing:
+    case GameState::WaveOne:
     {
-        // Trigger when the last cube has fully finished its Exploding -> Dead
-        // transition (m_bActive becomes false only at that point, which is
-        // what RemainingEnemyCount counts against).
-        if (m_pScene->RemainingEnemyCount() == 0)
+        // Trigger when all 5 wave-1 cubes (vertical corridor) have finished
+        // their Exploding -> Dead transition. Wave-2 cubes (east corridor)
+        // are ignored here: shooting them early does not advance the state
+        // (they will still be gone when wave 2 starts, so the stage can end
+        // immediately after the turn, which is fine).
+        if (m_pScene->WaveRemaining(1) == 0)
         {
             m_gameState   = GameState::ClearWalking;
             m_fClearTimer = 0.0f;
@@ -273,7 +278,10 @@ void CGameFramework::UpdateClearSequence(float fElapsedTime)
         m_fClearTimer += fElapsedTime;
         if (m_fClearTimer >= CLEAR_TURN_DURATION)
         {
-            m_gameState = GameState::Done;
+            // Turn finished. Hand control back to the player for wave 2 --
+            // not Done yet, since the east-corridor cubes still need to be
+            // shot. The camera is now frozen at (walked pos, rotated look).
+            m_gameState = GameState::WaveTwo;
 
             XMFLOAT3 up(0.0f, 1.0f, 0.0f);
             m_pPlayer->m_pCamera->SetLookAt(m_xmf3ClearStartPos, m_xmf3ClearTurnLookAt, up);
@@ -293,6 +301,18 @@ void CGameFramework::UpdateClearSequence(float fElapsedTime)
             XMFLOAT3 up(0.0f, 1.0f, 0.0f);
             m_pPlayer->m_pCamera->SetLookAt(m_xmf3ClearStartPos, la, up);
             m_pPlayer->m_pCamera->GenerateViewMatrix();
+        }
+        break;
+    }
+
+    case GameState::WaveTwo:
+    {
+        // Wave 2: east corridor is now in front of the camera. Trigger the
+        // final Done state when every wave-2 cube is gone. (Wave 1 is already
+        // empty at this point by construction.)
+        if (m_pScene->WaveRemaining(2) == 0)
+        {
+            m_gameState = GameState::Done;
         }
         break;
     }
@@ -334,18 +354,22 @@ void CGameFramework::FrameAdvance()
     m_GameTimer.GetFrameRate(szFps, 32);
     switch (m_gameState)
     {
-    case GameState::Playing:
-        _stprintf_s(szTitle, _T("VirtuaCop - Enemies left: %d  [%s"),
-                    m_pScene->RemainingEnemyCount(), szFps);
+    case GameState::WaveOne:
+        _stprintf_s(szTitle, _T("VirtuaCop - Wave 1: %d left  [%s"),
+                    m_pScene->WaveRemaining(1), szFps);
         break;
     case GameState::ClearWalking:
-        _stprintf_s(szTitle, _T("VirtuaCop - Cleared! (walking)  [%s"), szFps);
+        _stprintf_s(szTitle, _T("VirtuaCop - Wave 1 clear (walking)  [%s"), szFps);
         break;
     case GameState::ClearTurning:
-        _stprintf_s(szTitle, _T("VirtuaCop - Cleared! (turning)  [%s"), szFps);
+        _stprintf_s(szTitle, _T("VirtuaCop - Wave 1 clear (turning)  [%s"), szFps);
+        break;
+    case GameState::WaveTwo:
+        _stprintf_s(szTitle, _T("VirtuaCop - Wave 2: %d left  [%s"),
+                    m_pScene->WaveRemaining(2), szFps);
         break;
     case GameState::Done:
-        _stprintf_s(szTitle, _T("VirtuaCop - Cleared!  [%s"), szFps);
+        _stprintf_s(szTitle, _T("VirtuaCop - All clear!  [%s"), szFps);
         break;
     }
     ::SetWindowText(m_hWnd, szTitle);
