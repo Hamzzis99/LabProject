@@ -106,11 +106,11 @@ void CScene::BuildObjects()
     struct EnemySpec { float x, y, z; COLORREF color; };
     const EnemySpec kEnemies[] = {
         // ---- Wave 1 : vertical corridor (indices 0..4) ----
-        { -12.0f,  0.0f, -22.0f, RGB(255,   0,   0) },
-        { +12.0f,  0.0f, -22.0f, RGB(  0,   0, 255) },
-        {  -8.0f,  5.0f, -30.0f, RGB(255,   0, 255) },
-        {  +8.0f,  5.0f, -30.0f, RGB(255, 120,   0) },
-        {  +5.0f,  3.0f, -25.0f, RGB(  0, 220, 220) },
+        {  -6.0f,  1.0f, -16.0f, RGB(255,   0,   0) },
+        {  +6.0f,  1.0f, -16.0f, RGB(  0,   0, 255) },
+        {  -4.0f,  5.0f, -20.0f, RGB(255,   0, 255) },
+        {  +4.0f,  5.0f, -20.0f, RGB(255, 120,   0) },
+        {   0.0f,  3.0f, -24.0f, RGB(  0, 220, 220) },
         // ---- Wave 2 : east corridor  (indices 5..9) ----
         { +25.0f,  0.0f, -12.0f, RGB(255,  64,  64) },
         { +30.0f,  0.0f, -18.0f, RGB(160,   0, 255) },
