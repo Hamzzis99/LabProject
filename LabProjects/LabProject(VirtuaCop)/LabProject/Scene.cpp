@@ -88,64 +88,75 @@ void CScene::BuildObjects()
     }
 
     // -----------------------------------------------------------------
-    // 2) Enemies second (so they draw on top of walls where they overlap).
-    //
-    // Exactly 10 cubes, split into two waves of 5:
-    //   Wave 1 (m_AllObjects[0..4]): inside the vertical corridor,
-    //     visible from the camera's initial pose. Shooting all 5 triggers
-    //     the walk + turn cutscene.
-    //   Wave 2 (m_AllObjects[5..9]): inside the east corridor, hidden
-    //     behind the corner until the camera turns. Shooting all 5
-    //     finishes the stage.
-    //
-    // Cube half-extent is 2. Vertical corridor interior is
-    //   x in [-17.6, +17.6], y in [-3, +11], z in [-39.6, +4.6].
-    // East corridor interior is
-    //   x in [+18.4, +49.6], y in [-3, +11], z in [-21.6, -8.4].
-    // All positions below are inside those boxes with >=2 units of margin.
+    // 2) Spawn only wave 1 at startup. Wave 2 is intentionally deferred:
+    // it is created behind the corner only after wave 1 is cleared.
+    m_bWaveSpawned[0] = false;
+    m_bWaveSpawned[1] = false;
+    m_AllObjects.reserve(WAVE_SIZE * 2);
+    m_EnemyNodes.reserve(WAVE_SIZE * 2);
+
+    // Push the wall node local transforms into their CGameObject world
+    // matrices before any rendering/culling happens. Without this, the
+    // walls stay at identity and the L-shaped corridor collapses visually.
+    m_pRootNode->UpdateWorldTransform();
+    for (CGameObject* pObj : m_WallObjects) pObj->UpdateBoundingBox();
+
+    SpawnWave(1);
+}
+
+bool CScene::SpawnWave(int nWave)
+{
+    if (!m_pRootNode) return false;
+    if (nWave != 1 && nWave != 2) return false;
+
+    const int nWaveIndex = nWave - 1;
+    if (m_bWaveSpawned[nWaveIndex]) return false;
+
+    // Enemy data is split into two groups. Wave 2 is not instantiated until
+    // Wave 1 has actually been cleared, so the second corridor starts empty.
     struct EnemySpec { float x, y, z; COLORREF color; };
-    const EnemySpec kEnemies[] = {
-        // ---- Wave 1 : vertical corridor (indices 0..4) ----
+    const EnemySpec kWaveOne[] = {
         {  -6.0f,  1.0f, -16.0f, RGB(255,   0,   0) },
         {  +6.0f,  1.0f, -16.0f, RGB(  0,   0, 255) },
         {  -4.0f,  5.0f, -20.0f, RGB(255,   0, 255) },
         {  +4.0f,  5.0f, -20.0f, RGB(255, 120,   0) },
         {   0.0f,  3.0f, -24.0f, RGB(  0, 220, 220) },
-        // ---- Wave 2 : east corridor  (indices 5..9) ----
+    };
+    const EnemySpec kWaveTwo[] = {
         { +25.0f,  0.0f, -12.0f, RGB(255,  64,  64) },
         { +30.0f,  0.0f, -18.0f, RGB(160,   0, 255) },
         { +35.0f,  5.0f, -14.0f, RGB(  0, 200,   0) },
         { +42.0f,  3.0f, -16.0f, RGB(128,   0, 255) },
         { +45.0f,  7.0f, -12.0f, RGB(255,   0, 128) },
     };
-    constexpr int kEnemyCount = sizeof(kEnemies) / sizeof(kEnemies[0]);
 
-    // Shared cube mesh for every enemy (all enemies are the same 4x4x4 cube,
-    // just differently coloured). Refcount: 0 -> kEnemyCount after the loop.
+    const EnemySpec* pEnemies = (nWave == 1) ? kWaveOne : kWaveTwo;
+    const int nEnemyCount = WAVE_SIZE;
+
+    // Shared cube mesh for this wave. Refcount becomes nEnemyCount after
+    // SetMesh() is called on each enemy, then each object releases it later.
     CCubeMesh* pEnemyMesh = new CCubeMesh(4.0f, 4.0f, 4.0f);
 
-    m_AllObjects.reserve(kEnemyCount);
-    m_EnemyNodes.reserve(kEnemyCount);
-    for (int i = 0; i < kEnemyCount; ++i)
+    for (int i = 0; i < nEnemyCount; ++i)
     {
         CGameObject* pObj = new CGameObject();
         pObj->SetMesh(pEnemyMesh);
-        pObj->SetColor(kEnemies[i].color);
+        pObj->SetColor(pEnemies[i].color);
 
         CSceneNode* pNode = new CSceneNode();
         pNode->SetObject(pObj);
-        pNode->SetLocalPosition(kEnemies[i].x, kEnemies[i].y, kEnemies[i].z);
+        pNode->SetLocalPosition(pEnemies[i].x, pEnemies[i].y, pEnemies[i].z);
 
         m_pRootNode->AddChild(pNode);
+        pNode->UpdateWorldTransform();
+        pObj->UpdateBoundingBox();
 
         m_AllObjects.push_back(pObj);
         m_EnemyNodes.push_back(pNode);
     }
 
-    // Prime world transforms + OOBBs so picking works on frame 0.
-    m_pRootNode->UpdateWorldTransform();
-    for (CGameObject* pObj : m_WallObjects) pObj->UpdateBoundingBox();
-    for (CGameObject* pObj : m_AllObjects)  pObj->UpdateBoundingBox();
+    m_bWaveSpawned[nWaveIndex] = true;
+    return true;
 }
 
 void CScene::ReleaseObjects()

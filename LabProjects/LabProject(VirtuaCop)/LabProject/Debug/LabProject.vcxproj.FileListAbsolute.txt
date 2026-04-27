@@ -1,1 +1,2 @@
 F:\D3d12\LabProject(VirtuaCop)\LabProject\Debug\LabProject.exe
+C:\Github\LabProject\LabProject\LabProjects\LabProject(VirtuaCop)\LabProject\Debug\LabProject.exe

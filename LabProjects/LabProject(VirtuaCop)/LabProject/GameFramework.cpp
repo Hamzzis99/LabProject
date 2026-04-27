@@ -93,8 +93,8 @@ void CGameFramework::OnProcessingMouseMessage(HWND /*hWnd*/, UINT nMessageID, WP
     HitMark mark;
     mark.x          = xClient;
     mark.y          = yClient;
-    mark.fRemaining = HIT_MARK_DURATION;
     mark.bDidHit    = (pHit != NULL);
+    mark.fRemaining = mark.bDidHit ? HIT_MARK_HIT_DURATION : HIT_MARK_MISS_DURATION;
     m_HitMarks.push_back(mark);
 
     if (pHit)
@@ -214,6 +214,10 @@ void CGameFramework::UpdateClearSequence(float fElapsedTime)
         // immediately after the turn, which is fine).
         if (m_pScene->WaveRemaining(1) == 0)
         {
+            // Wave 2 is spawned only now. It starts behind the corner/east
+            // corridor wall, so it is not visible until the clear camera turn.
+            m_pScene->SpawnWave(2);
+
             m_gameState   = GameState::ClearWalking;
             m_fClearTimer = 0.0f;
 
@@ -313,12 +317,17 @@ void CGameFramework::UpdateClearSequence(float fElapsedTime)
         if (m_pScene->WaveRemaining(2) == 0)
         {
             m_gameState = GameState::Done;
+            m_fClearTimer = 0.0f;
         }
         break;
     }
 
     case GameState::Done:
-        // Nothing to do; camera stays put at the final pose.
+        m_fClearTimer += fElapsedTime;
+        if (m_fClearTimer >= DONE_EXIT_DELAY)
+        {
+            ::PostQuitMessage(0);
+        }
         break;
     }
 }
@@ -369,8 +378,12 @@ void CGameFramework::FrameAdvance()
                     m_pScene->WaveRemaining(2), szFps);
         break;
     case GameState::Done:
-        _stprintf_s(szTitle, _T("VirtuaCop - All clear!  [%s"), szFps);
+    {
+        float fRemaining = DONE_EXIT_DELAY - m_fClearTimer;
+        if (fRemaining < 0.0f) fRemaining = 0.0f;
+        _stprintf_s(szTitle, _T("VirtuaCop - All clear! Closing in %.1fs  [%s"), fRemaining, szFps);
         break;
+    }
     }
     ::SetWindowText(m_hWnd, szTitle);
 }

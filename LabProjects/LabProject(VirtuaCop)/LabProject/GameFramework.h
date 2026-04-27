@@ -67,7 +67,8 @@ private:
     // Hit marks (2D overlay). Short-lived; size bounded naturally by the
     // mark duration times click rate.
     std::vector<HitMark>        m_HitMarks;
-    static constexpr float      HIT_MARK_DURATION = 0.20f;
+    static constexpr float      HIT_MARK_HIT_DURATION  = 1.50f;
+    static constexpr float      HIT_MARK_MISS_DURATION = 0.35f;
 
     // ---- Stage-clear camera sequence ----------------------------------
     GameState                   m_gameState    = GameState::WaveOne;
@@ -86,6 +87,7 @@ private:
     static constexpr float      CLEAR_WALK_BOB_FREQ = 7.0f;   // rad/s (footstep rate)
     static constexpr float      CLEAR_TURN_DURATION = 1.5f;   // seconds turning
     static constexpr float      CLEAR_TURN_YAW_DEG  = 90.0f;  // right-turn angle (matches L-corridor corner)
+    static constexpr float      DONE_EXIT_DELAY     = 3.0f;   // seconds after All Clear before quitting
 
 public:
     void BuildFrameBuffer();

@@ -6,10 +6,10 @@
 #include <vector>
 
 // Holds:
-//   - the shared cube mesh used by every enemy (ref-counted)
 //   - a flat owning list of CGameObject* (lifetime control)
-//   - a scene-graph root with one CSceneNode per enemy as direct children
-//     (the "simple tree" data structure requested in the spec)
+//   - a scene-graph root with one CSceneNode per enemy/wall
+//   - deferred wave spawning: wave 1 exists at start, wave 2 is created
+//     only after wave 1 is cleared.
 class CScene
 {
 public:
@@ -25,9 +25,11 @@ public:
     // Boundary walls: visual only, not pickable, not counted as enemies.
     // Stored in a separate owning list so they can be deleted on shutdown.
     std::vector<CGameObject*>       m_WallObjects;
+    bool                            m_bWaveSpawned[2] = { false, false };
 
     virtual void BuildObjects();
     virtual void ReleaseObjects();
+    bool SpawnWave(int nWave);
 
     virtual void Animate(float fElapsedTime);
     virtual void Render(HDC hDCFrameBuffer, CCamera* pCamera);
@@ -40,9 +42,9 @@ public:
     int RemainingEnemyCount() const;
 
     // Per-wave remaining counts. Wave 1 = first 5 entries of m_AllObjects
-    // (vertical corridor), Wave 2 = next 5 entries (east corridor). Used by
-    // the game state machine to decide when to trigger the walk+turn (wave
-    // 1 cleared) and when the whole stage is done (both waves cleared).
+    // (vertical corridor), Wave 2 = next 5 entries after SpawnWave(2)
+    // (east corridor). Used by the game state machine to decide when to
+    // trigger the walk+turn and when the whole stage is done.
     static constexpr int WAVE_SIZE = 5;
     int WaveRemaining(int nWave) const;
 };
